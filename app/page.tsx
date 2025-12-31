@@ -11,6 +11,47 @@ interface Countdown {
   seconds: number;
 }
 
+interface TimezoneInfo {
+  offset: number;
+  name: string;
+  label: string;
+}
+
+const getIndonesianTimezone = (): TimezoneInfo => {
+  const date = new Date();
+  const timeString = date.toLocaleString("en-US", {
+    timeZone: "Asia/Jakarta",
+  });
+  const jakartaTime = new Date(timeString).getTime() - date.getTime();
+
+  // Deteksi timezone Indonesia berdasarkan offset
+  // WIB (Barat) = UTC+7, WITA (Tengah) = UTC+8, WIT (Timur) = UTC+9
+  const offsetHours = -jakartaTime / (1000 * 60 * 60);
+
+  if (offsetHours >= 8.5) {
+    // WIT (Timur) - UTC+9
+    return {
+      offset: 9,
+      name: "WIT",
+      label: "Indonesia Timur",
+    };
+  } else if (offsetHours >= 7.5) {
+    // WITA (Tengah) - UTC+8
+    return {
+      offset: 8,
+      name: "WITA",
+      label: "Indonesia Tengah",
+    };
+  } else {
+    // WIB (Barat) - UTC+7
+    return {
+      offset: 7,
+      name: "WIB",
+      label: "Indonesia Barat",
+    };
+  }
+};
+
 export default function Home() {
   const [countdown, setCountdown] = useState<Countdown>({
     days: 0,
@@ -19,14 +60,24 @@ export default function Home() {
     seconds: 0,
   });
   const [mounted, setMounted] = useState(false);
+  const [timezoneInfo, setTimezoneInfo] = useState<TimezoneInfo>({
+    offset: 7,
+    name: "WIB",
+    label: "Indonesia Barat",
+  });
 
   useEffect(() => {
     setMounted(true);
+    const tz = getIndonesianTimezone();
+    setTimezoneInfo(tz);
 
     const updateCountdown = () => {
-      const now = new Date().getTime();
-      const newYear = new Date("2026-01-01T00:00:00").getTime();
-      const distance = newYear - now;
+      const tz = getIndonesianTimezone();
+      const now = new Date();
+      const offset = tz.offset * 60 * 60 * 1000;
+      const localTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000) + offset;
+      const newYear = new Date("2026-01-01T00:00:00").getTime() + (new Date("2026-01-01T00:00:00").getTimezoneOffset() * 60 * 1000) + offset;
+      const distance = newYear - localTime;
 
       if (distance > 0) {
         setCountdown({
@@ -129,7 +180,7 @@ export default function Home() {
             transition={{ delay: 0.3 }}
             className="bg-gradient-to-br from-amber-950/30 via-slate-800/40 to-orange-950/30 backdrop-blur border border-amber-500/30 rounded-2xl p-6 md:p-8"
           >
-            <p className="text-sm text-gray-400 mb-4">Waktu menjelang 2026</p>
+            <p className="text-sm text-gray-400 mb-4">Waktu menjelang 2026 ({timezoneInfo.name} - {timezoneInfo.label})</p>
             <div className="grid grid-cols-4 gap-3 md:gap-4">
               <CountdownItem value={countdown.days} label="Hari" />
               <CountdownItem value={countdown.hours} label="Jam" />
