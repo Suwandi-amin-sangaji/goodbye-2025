@@ -19,37 +19,68 @@ interface TimezoneInfo {
 
 const getIndonesianTimezone = (): TimezoneInfo => {
   const date = new Date();
-  const timeString = date.toLocaleString("en-US", {
+  
+  // Buat formatter untuk setiap timezone Indonesia
+  const witFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jayapura",
+  });
+  const witTime = new Date(
+    witFormatter.format(date).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)\s([AP]M)/, 
+    (match, month, day, year, hours, minutes, seconds, period) => {
+      if (period === "PM" && hours !== "12") hours = String(parseInt(hours) + 12);
+      if (period === "AM" && hours === "12") hours = "00";
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hours}:${minutes}:${seconds}`;
+    })
+  ).getTime();
+  const witOffset = (witTime - date.getTime()) / (1000 * 60 * 60);
+
+  const witaFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Makassar",
+  });
+  const witaTime = new Date(
+    witaFormatter.format(date).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)\s([AP]M)/, 
+    (match, month, day, year, hours, minutes, seconds, period) => {
+      if (period === "PM" && hours !== "12") hours = String(parseInt(hours) + 12);
+      if (period === "AM" && hours === "12") hours = "00";
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hours}:${minutes}:${seconds}`;
+    })
+  ).getTime();
+  const witaOffset = (witaTime - date.getTime()) / (1000 * 60 * 60);
+
+  const wibFormatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Jakarta",
   });
-  const jakartaTime = new Date(timeString).getTime() - date.getTime();
+  const wibTime = new Date(
+    wibFormatter.format(date).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)\s([AP]M)/, 
+    (match, month, day, year, hours, minutes, seconds, period) => {
+      if (period === "PM" && hours !== "12") hours = String(parseInt(hours) + 12);
+      if (period === "AM" && hours === "12") hours = "00";
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hours}:${minutes}:${seconds}`;
+    })
+  ).getTime();
+  const wibOffset = (wibTime - date.getTime()) / (1000 * 60 * 60);
 
-  // Deteksi timezone Indonesia berdasarkan offset
-  // WIB (Barat) = UTC+7, WITA (Tengah) = UTC+8, WIT (Timur) = UTC+9
-  const offsetHours = -jakartaTime / (1000 * 60 * 60);
+  // Deteksi timezone lokal user
+  const userOffset = -date.getTimezoneOffset() / 60;
 
-  if (offsetHours >= 8.5) {
-    // WIT (Timur) - UTC+9
-    return {
-      offset: 9,
-      name: "WIT",
-      label: "Indonesia Timur",
-    };
-  } else if (offsetHours >= 7.5) {
-    // WITA (Tengah) - UTC+8
-    return {
-      offset: 8,
-      name: "WITA",
-      label: "Indonesia Tengah",
-    };
-  } else {
-    // WIB (Barat) - UTC+7
-    return {
-      offset: 7,
-      name: "WIB",
-      label: "Indonesia Barat",
-    };
-  }
+  // Cari yang paling dekat dengan timezone user
+  const timezones = [
+    { offset: 9, name: "WIT", label: "Indonesia Timur", actualOffset: witOffset },
+    { offset: 8, name: "WITA", label: "Indonesia Tengah", actualOffset: witaOffset },
+    { offset: 7, name: "WIB", label: "Indonesia Barat", actualOffset: wibOffset },
+  ];
+
+  const closest = timezones.reduce((prev, curr) => {
+    const prevDiff = Math.abs(prev.actualOffset - userOffset);
+    const currDiff = Math.abs(curr.actualOffset - userOffset);
+    return currDiff < prevDiff ? curr : prev;
+  });
+
+  return {
+    offset: closest.offset,
+    name: closest.name,
+    label: closest.label,
+  };
 };
 
 export default function Home() {
